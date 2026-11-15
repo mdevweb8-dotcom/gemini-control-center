@@ -1,0 +1,61 @@
+name: نشر التطبيق على GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: تثبيت الاعتمادات والبناء
+    runs-on: ubuntu-latest
+    steps:
+      - name: استنساخ المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة بيئة Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: تثبيت الاعتمادات
+        run: npm install
+
+      - name: بناء المشروع
+        run: npm run build -- --base=/gemini-control-center/
+
+      - name: تجهيز مجلد النشر
+        run: |
+          touch dist/.nojekyll
+          cp dist/index.html dist/404.html
+
+      - name: تهيئة إعدادات GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: رفع حزمة النشر
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: النشر على GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: تنفيذ النشر
+        id: deployment
+        uses: actions/deploy-pages@v4
